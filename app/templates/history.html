@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}判定履歴 - 駐車場空き台数カウント{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>判定履歴</h1>
+  <p class="muted">直近{{ records|length }}件を表示しています（最新100件まで）。</p>
+  {% if records %}
+  <table>
+    <thead>
+      <tr>
+        <th>判定時刻</th>
+        <th>総枠数</th>
+        <th>空き</th>
+        <th>使用中</th>
+        <th>判定不能</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in records %}
+      <tr>
+        <td>{{ r.detected_at }}</td>
+        <td>{{ r.total_spaces }}</td>
+        <td>{{ r.empty_count }}</td>
+        <td>{{ r.occupied_count }}</td>
+        <td>{{ r.unknown_count }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="muted">まだ判定履歴がありません。</p>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+{% block title %}駐車枠管理 - 駐車場空き台数カウント{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>駐車枠の登録</h1>
+  <p class="muted">
+    駐車場全体が写った画像を選択し、画像上をドラッグして駐車枠を1つずつ登録してください。
+    ここで選択した画像はサーバーには送信されません（枠の位置決めのみに使用します）。
+  </p>
+  <input type="file" id="canvas-image-input" accept="image/*" capture="environment">
+  <p id="canvas-status" class="muted"></p>
+  <canvas id="space-canvas" width="800" height="450"></canvas>
+</div>
+
+<div class="card">
+  <h2>登録済み駐車枠一覧</h2>
+  {% if spaces %}
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th><th>名前</th><th>X</th><th>Y</th><th>幅</th><th>高さ</th><th>基準画像</th><th>操作</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for s in spaces %}
+      <tr data-id="{{ s.id }}">
+        <td>{{ s.id }}</td>
+        <td><input type="text" class="edit-name" value="{{ s.name }}"></td>
+        <td><input type="number" class="edit-x" value="{{ s.x }}"></td>
+        <td><input type="number" class="edit-y" value="{{ s.y }}"></td>
+        <td><input type="number" class="edit-width" value="{{ s.width }}"></td>
+        <td><input type="number" class="edit-height" value="{{ s.height }}"></td>
+        <td>{% if s.has_reference %}<span class="badge status-empty">登録済</span>{% else %}<span class="badge status-unknown">未登録</span>{% endif %}</td>
+        <td>
+          <button type="button" class="secondary save-btn">保存</button>
+          <button type="button" class="danger delete-btn">削除</button>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="muted">まだ駐車枠が登録されていません。上のキャンバスから登録してください。</p>
+  {% endif %}
+</div>
+
+<div class="card">
+  <h2>空車基準画像の登録</h2>
+  <p class="muted">
+    すべての駐車枠が「空き」の状態で駐車場全体を撮影し、以下から登録してください。
+    駐車枠ごとに自動で切り出して保存します（全体画像は保存されません）。
+  </p>
+  <input type="file" id="reference-input" accept="image/jpeg,image/png,image/webp" capture="environment">
+  <button type="button" id="reference-submit">基準画像として登録</button>
+  <p id="reference-status" class="muted"></p>
+</div>
+
+<div id="admin-error" class="flash error" style="display:none;"></div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  window.IMAGE_MAX_WIDTH = {{ image_max_width }};
+  window.EXISTING_SPACES = {{ spaces_json | safe }};
+</script>
+<script src="/static/js/spaces.js"></script>
+<script>
+(function () {
+  const errorBox = document.getElementById('admin-error');
+
+  document.querySelectorAll('.save-btn').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const row = btn.closest('tr');
+      const id = row.dataset.id;
+      const payload = {
+        name: row.querySelector('.edit-name').value,
+        x: parseInt(row.querySelector('.edit-x').value, 10),
+        y: parseInt(row.querySelector('.edit-y').value, 10),
+        width: parseInt(row.querySelector('.edit-width').value, 10),
+        height: parseInt(row.querySelector('.edit-height').value, 10),
+      };
+      try {
+        const response = await fetch(`/admin/spaces/api/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.detail || '保存に失敗しました。');
+        errorBox.style.display = 'none';
+        window.location.reload();
+      } catch (err) {
+        errorBox.textContent = err.message;
+        errorBox.style.display = 'block';
+      }
+    });
+  });
+
+  document.querySelectorAll('.delete-btn').forEach((btn) => {
+    btn.addEventListener('click', async () => {
+      const row = btn.closest('tr');
+      const id = row.dataset.id;
+      if (!window.confirm('この駐車枠を削除しますか？基準画像も削除されます。')) return;
+      try {
+        const response = await fetch(`/admin/spaces/api/${id}`, { method: 'DELETE' });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.detail || '削除に失敗しました。');
+        errorBox.style.display = 'none';
+        window.location.reload();
+      } catch (err) {
+        errorBox.textContent = err.message;
+        errorBox.style.display = 'block';
+      }
+    });
+  });
+
+  document.getElementById('reference-submit').addEventListener('click', async () => {
+    const input = document.getElementById('reference-input');
+    const statusEl = document.getElementById('reference-status');
+    const file = input.files[0];
+    if (!file) {
+      statusEl.textContent = '画像を選択してください。';
+      return;
+    }
+    const formData = new FormData();
+    formData.append('file', file);
+    statusEl.textContent = '登録中...';
+    try {
+      const response = await fetch('/api/reference', { method: 'POST', body: formData });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || '登録に失敗しました。');
+      statusEl.textContent = `登録完了: 成功 ${data.registered.length}件 / 失敗 ${data.failed.length}件`;
+      if (data.failed.length === 0) {
+        window.setTimeout(() => window.location.reload(), 800);
+      }
+    } catch (err) {
+      statusEl.textContent = err.message || '登録に失敗しました。';
+    }
+  });
+})();
+</script>
+{% endblock %}

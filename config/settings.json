@@ -1,0 +1,7 @@
+{
+  "occupied_threshold": 0.12,
+  "uncertain_margin": 0.02,
+  "required_consecutive_results": 3,
+  "image_max_width": 1280,
+  "max_upload_size_mb": 10
+}

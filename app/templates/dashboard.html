@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}ダッシュボード - 駐車場空き台数カウント{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>駐車場の状態</h1>
+  <p class="muted">最終更新時刻: <span id="updated-at">{{ status.updated_at or "まだ判定が実行されていません" }}</span></p>
+</div>
+
+<div class="summary-grid">
+  <div class="summary-tile"><div class="value" id="summary-total">{{ status.total }}</div><div class="label">総駐車枠数</div></div>
+  <div class="summary-tile"><div class="value" id="summary-occupied">{{ status.occupied }}</div><div class="label">使用中</div></div>
+  <div class="summary-tile"><div class="value" id="summary-empty">{{ status.empty }}</div><div class="label">空き</div></div>
+  <div class="summary-tile"><div class="value" id="summary-unknown">{{ status.unknown }}</div><div class="label">判定不能</div></div>
+</div>
+
+<div class="card result-image-wrap">
+  <h2>判定結果画像</h2>
+  <img id="result-image" src="/result-image" alt="駐車枠の判定結果を重ねた画像"
+       onerror="this.style.display='none'; document.getElementById('no-image-msg').style.display='block';">
+  <p id="no-image-msg" class="muted" style="display:none;">まだ判定画像がありません。「撮影・判定」から画像を送信してください。</p>
+</div>
+
+<div class="card">
+  <h2>駐車枠ごとの状態</h2>
+  <div class="space-list" id="space-list">
+    {% for space in status.spaces %}
+    <div class="space-item status-{{ space.status }}">
+      <span>{{ space.name }}</span>
+      <span>{% if space.status == "empty" %}空き{% elif space.status == "occupied" %}使用中{% else %}判定不能{% endif %}</span>
+    </div>
+    {% else %}
+    <p class="muted">駐車枠が登録されていません。「駐車枠管理」から登録してください。</p>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function statusLabel(status) {
+  if (status === 'empty') return '空き';
+  if (status === 'occupied') return '使用中';
+  return '判定不能';
+}
+
+async function refreshStatus() {
+  try {
+    const response = await fetch('/api/status');
+    if (!response.ok) return;
+    const data = await response.json();
+
+    document.getElementById('updated-at').textContent = data.updated_at || 'まだ判定が実行されていません';
+    document.getElementById('summary-total').textContent = data.total;
+    document.getElementById('summary-occupied').textContent = data.occupied;
+    document.getElementById('summary-empty').textContent = data.empty;
+    document.getElementById('summary-unknown').textContent = data.unknown;
+
+    const list = document.getElementById('space-list');
+    if (data.spaces.length === 0) {
+      list.innerHTML = '<p class="muted">駐車枠が登録されていません。「駐車枠管理」から登録してください。</p>';
+    } else {
+      list.innerHTML = '';
+      data.spaces.forEach((space) => {
+        const item = document.createElement('div');
+        item.className = `space-item status-${space.status}`;
+        item.innerHTML = `<span></span><span></span>`;
+        item.children[0].textContent = space.name;
+        item.children[1].textContent = statusLabel(space.status);
+        list.appendChild(item);
+      });
+    }
+
+    const img = document.getElementById('result-image');
+    img.style.display = '';
+    img.src = '/result-image?t=' + Date.now();
+    document.getElementById('no-image-msg').style.display = 'none';
+  } catch (err) {
+    // ネットワーク一時断などは無視して次回のポーリングに任せる
+  }
+}
+
+setInterval(refreshStatus, 5000);
+</script>
+{% endblock %}

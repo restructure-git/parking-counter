@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+*.pyc
+data/parking.db
+data/reference/*.jpg
+data/reference/*.png
+data/tmp/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/

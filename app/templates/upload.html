@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% block title %}撮影・判定 - 駐車場空き台数カウント{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>駐車場を撮影して判定</h1>
+  <p class="muted">スマートフォンのカメラ、またはPCの画像ファイルで駐車場全体を撮影・選択してください。</p>
+
+  <form id="detect-form">
+    <div style="margin-bottom: 0.75rem;">
+      <label for="camera-input"><strong>カメラで撮影</strong></label><br>
+      <input type="file" id="camera-input" name="camera" accept="image/*" capture="environment">
+    </div>
+    <div style="margin-bottom: 0.75rem;">
+      <label for="file-input"><strong>画像ファイルを選択</strong></label><br>
+      <input type="file" id="file-input" name="file" accept="image/jpeg,image/png,image/webp">
+    </div>
+    <div id="preview-wrap" style="margin-bottom: 0.75rem; display:none;">
+      <img id="preview" alt="選択した画像のプレビュー" style="max-width:100%; border-radius:6px; border:1px solid #dadce0;">
+    </div>
+    <button type="submit">判定実行</button>
+  </form>
+</div>
+
+<div id="result" class="card" style="display:none;">
+  <h2>判定結果</h2>
+  <p id="result-summary"></p>
+  <div id="result-spaces" class="space-list"></div>
+</div>
+
+<div id="error-box" class="flash error" style="display:none;"></div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const cameraInput = document.getElementById('camera-input');
+const fileInput = document.getElementById('file-input');
+const preview = document.getElementById('preview');
+const previewWrap = document.getElementById('preview-wrap');
+const form = document.getElementById('detect-form');
+const resultBox = document.getElementById('result');
+const resultSummary = document.getElementById('result-summary');
+const resultSpaces = document.getElementById('result-spaces');
+const errorBox = document.getElementById('error-box');
+
+function showPreview(file) {
+  if (!file) return;
+  const url = URL.createObjectURL(file);
+  preview.src = url;
+  previewWrap.style.display = 'block';
+}
+
+cameraInput.addEventListener('change', () => {
+  if (cameraInput.files[0]) {
+    fileInput.value = '';
+    showPreview(cameraInput.files[0]);
+  }
+});
+
+fileInput.addEventListener('change', () => {
+  if (fileInput.files[0]) {
+    cameraInput.value = '';
+    showPreview(fileInput.files[0]);
+  }
+});
+
+function statusLabel(status) {
+  if (status === 'empty') return '空き';
+  if (status === 'occupied') return '使用中';
+  return '判定不能';
+}
+
+form.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  errorBox.style.display = 'none';
+  resultBox.style.display = 'none';
+
+  const file = cameraInput.files[0] || fileInput.files[0];
+  if (!file) {
+    errorBox.textContent = '画像を撮影するか、ファイルを選択してください。';
+    errorBox.style.display = 'block';
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const submitButton = form.querySelector('button[type="submit"]');
+  submitButton.disabled = true;
+  submitButton.textContent = '判定中...';
+
+  try {
+    const response = await fetch('/api/detect', { method: 'POST', body: formData });
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.detail || '判定に失敗しました。');
+    }
+
+    resultSummary.textContent =
+      `総枠数: ${data.total} / 空き: ${data.empty} / 使用中: ${data.occupied} / 判定不能: ${data.unknown}`;
+    resultSpaces.innerHTML = '';
+    data.spaces.forEach((space) => {
+      const item = document.createElement('div');
+      item.className = `space-item status-${space.status}`;
+      item.textContent = `${space.name}：${statusLabel(space.status)}`;
+      resultSpaces.appendChild(item);
+    });
+    resultBox.style.display = 'block';
+  } catch (err) {
+    errorBox.textContent = err.message || '判定に失敗しました。';
+    errorBox.style.display = 'block';
+  } finally {
+    submitButton.disabled = false;
+    submitButton.textContent = '判定実行';
+  }
+});
+</script>
+{% endblock %}

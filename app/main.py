@@ -1,0 +1,52 @@
+"""駐車場空き台数カウントシステム FastAPIエントリポイント。"""
+
+from __future__ import annotations
+
+import logging
+from contextlib import asynccontextmanager
+
+from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
+
+from app.config import BASE_DIR, ensure_data_dirs, settings
+from app.database import init_db
+from app.schemas import HealthResponse
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+)
+logger = logging.getLogger("app")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    logger.info("application starting up")
+    ensure_data_dirs()
+    init_db()
+    logger.info(
+        "settings loaded: occupied_threshold=%s required_consecutive_results=%s",
+        settings.occupied_threshold,
+        settings.required_consecutive_results,
+    )
+    yield
+
+
+app = FastAPI(title="Parking Space Counter", version="0.1.0", lifespan=lifespan)
+
+static_dir = BASE_DIR / "app" / "static"
+static_dir.mkdir(parents=True, exist_ok=True)
+app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
+
+
+@app.get("/health", response_model=HealthResponse)
+def health() -> HealthResponse:
+    return HealthResponse(status="ok")
+
+
+from app.routers import admin, dashboard, detection, history  # noqa: E402
+
+app.include_router(dashboard.router)
+app.include_router(detection.router)
+app.include_router(history.router)
+app.include_router(admin.router)

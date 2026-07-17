@@ -1,0 +1,213 @@
+:root {
+  --color-empty: #1e8e3e;
+  --color-occupied: #d93025;
+  --color-unknown: #9e9e00;
+  --bg: #f5f5f5;
+  --card-bg: #ffffff;
+  --text: #202124;
+  --muted: #5f6368;
+  --border: #dadce0;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, "Segoe UI", "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+header.app-header {
+  background: #202124;
+  color: #fff;
+  padding: 0.75rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+header.app-header a {
+  color: #fff;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+nav.app-nav {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+nav.app-nav a {
+  color: #cfd8dc;
+  font-size: 0.9rem;
+}
+
+main {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+.card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.summary-tile {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.75rem;
+  text-align: center;
+}
+
+.summary-tile .value {
+  font-size: 1.8rem;
+  font-weight: 700;
+}
+
+.summary-tile .label {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.space-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 0.5rem;
+}
+
+.space-item {
+  border-radius: 6px;
+  padding: 0.6rem;
+  color: #fff;
+  font-weight: 600;
+  display: flex;
+  justify-content: space-between;
+}
+
+.status-empty {
+  background: var(--color-empty);
+}
+
+.status-occupied {
+  background: var(--color-occupied);
+}
+
+.status-unknown {
+  background: var(--color-unknown);
+  color: #202124;
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.1rem 0.5rem;
+  border-radius: 4px;
+  color: #fff;
+  font-size: 0.8rem;
+}
+
+.badge.status-empty {
+  background: var(--color-empty);
+}
+
+.badge.status-occupied {
+  background: var(--color-occupied);
+}
+
+.badge.status-unknown {
+  background: var(--color-unknown);
+  color: #202124;
+}
+
+button, input[type="submit"] {
+  background: #1a73e8;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 0.6rem 1rem;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+button.secondary {
+  background: #5f6368;
+}
+
+button.danger {
+  background: var(--color-occupied);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th, td {
+  text-align: left;
+  padding: 0.4rem 0.5rem;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.9rem;
+}
+
+.muted {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.result-image-wrap img {
+  max-width: 100%;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+}
+
+.flash {
+  padding: 0.6rem 1rem;
+  border-radius: 6px;
+  margin-bottom: 1rem;
+}
+
+.flash.error {
+  background: #fce8e6;
+  color: #a50e0e;
+}
+
+.flash.success {
+  background: #e6f4ea;
+  color: #137333;
+}
+
+canvas {
+  max-width: 100%;
+  border: 1px solid var(--border);
+  touch-action: none;
+}
+
+.space-form-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 0.5rem;
+}
+
+.space-form-row input {
+  padding: 0.3rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  width: 90px;
+}
