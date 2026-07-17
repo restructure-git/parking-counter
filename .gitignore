@@ -7,4 +7,7 @@ data/reference/*.png
 data/tmp/
 .pytest_cache/
 .ruff_cache/
+.mypy_cache/
 *.egg-info/
+logs/
+scratch/

@@ -5,9 +5,10 @@ from __future__ import annotations
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.staticfiles import StaticFiles
 
+from app.auth import auth_enabled, require_auth
 from app.config import BASE_DIR, ensure_data_dirs, settings
 from app.database import init_db
 from app.schemas import HealthResponse
@@ -29,6 +30,13 @@ async def lifespan(app: FastAPI):
         settings.occupied_threshold,
         settings.required_consecutive_results,
     )
+    if auth_enabled():
+        logger.info("admin authentication is enabled")
+    else:
+        logger.warning(
+            "admin authentication is DISABLED (PARKING_ADMIN_USERNAME/PARKING_ADMIN_PASSWORD "
+            "not set) - anyone who can reach this server can view and modify parking data"
+        )
     yield
 
 
@@ -46,7 +54,8 @@ def health() -> HealthResponse:
 
 from app.routers import admin, dashboard, detection, history  # noqa: E402
 
-app.include_router(dashboard.router)
-app.include_router(detection.router)
-app.include_router(history.router)
-app.include_router(admin.router)
+_auth_dep = [Depends(require_auth)]
+app.include_router(dashboard.router, dependencies=_auth_dep)
+app.include_router(detection.router, dependencies=_auth_dep)
+app.include_router(history.router, dependencies=_auth_dep)
+app.include_router(admin.router, dependencies=_auth_dep)

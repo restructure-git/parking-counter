@@ -1,4 +1,6 @@
 @echo off
+chcp 65001 >nul
+set PYTHONIOENCODING=utf-8
 setlocal
 
 cd /d "%~dp0"
@@ -26,6 +28,8 @@ if not exist ".venv\installed.flag" (
 ) else (
     echo [run.bat] Dependencies already installed, skipping install.
 )
+
+".venv\Scripts\python.exe" scripts\check_credentials.py lan
 
 echo.
 echo [run.bat] Starting server.
