@@ -1,0 +1,10 @@
+# detector_backend を "yolo" にする場合のみ追加でインストールする。
+# torch/torchvision を含むため数百MB〜1GB程度のダウンロードが発生する。
+#
+#   .venv\Scripts\python.exe -m pip install -r requirements.txt
+#   .venv\Scripts\python.exe -m pip install -r requirements-yolo.txt
+#
+# 初回検出実行時に、モデルファイル（config/settings.json の yolo_model_path、
+# デフォルトは yolov8n.pt）がまだ手元になければ ultralytics が自動的に
+# ダウンロードする（要インターネット接続、2回目以降はキャッシュを使用）。
+ultralytics>=8.3

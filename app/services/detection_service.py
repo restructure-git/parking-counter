@@ -16,11 +16,12 @@ import numpy as np
 
 from app.config import TMP_DIR, settings
 from app.database import save_detection
-from app.models import ParkingSpace, SpaceDetectionResult
+from app.models import DetectionResult, ParkingSpace, SpaceDetectionResult
 from app.services import reference_manager, space_store
 from app.services.image_processor import crop_space, decode_image, resize_max_width
 from app.services.parking_detector import ParkingDetector
 from app.services.state_manager import StateManager
+from app.services.yolo_detector import YoloParkingDetector
 
 logger = logging.getLogger(__name__)
 
@@ -32,10 +33,35 @@ STATUS_COLORS_BGR = {
     "unknown": (0, 210, 230),
 }
 
-detector = ParkingDetector(
-    occupied_threshold=settings.occupied_threshold,
-    uncertain_margin=settings.uncertain_margin,
-)
+
+def _build_detector() -> tuple[ParkingDetector | YoloParkingDetector, str]:
+    """設定に応じた判定バックエンドを組み立てる。
+
+    YOLOが要求されているのに初期化できない場合（未インストール等）は、
+    アプリ全体を止めずに従来の画像差分方式へフォールバックする。
+    """
+    if settings.detector_backend == "yolo":
+        try:
+            yolo_detector = YoloParkingDetector(
+                model_path=settings.yolo_model_path,
+                confidence_threshold=settings.yolo_confidence_threshold,
+                overlap_threshold=settings.yolo_overlap_threshold,
+                uncertain_margin=settings.yolo_uncertain_margin,
+            )
+            return yolo_detector, "yolo"
+        except Exception:
+            logger.exception(
+                "failed to initialize YOLO detector; falling back to diff-based detector"
+            )
+
+    diff_detector = ParkingDetector(
+        occupied_threshold=settings.occupied_threshold,
+        uncertain_margin=settings.uncertain_margin,
+    )
+    return diff_detector, "diff"
+
+
+detector, detector_backend = _build_detector()
 state_manager = StateManager(required_consecutive_results=settings.required_consecutive_results)
 
 
@@ -52,6 +78,19 @@ _status_lock = threading.Lock()
 def get_status() -> SystemStatus:
     with _status_lock:
         return SystemStatus(updated_at=_status.updated_at, spaces=list(_status.spaces))
+
+
+def _run_raw_detection(image: np.ndarray, spaces: list[ParkingSpace]) -> dict[int, DetectionResult]:
+    """設定された判定バックエンドで、駐車枠ごとの生の判定結果を得る。"""
+    if isinstance(detector, YoloParkingDetector):
+        return detector.detect_all(image, spaces)
+
+    results: dict[int, DetectionResult] = {}
+    for space in spaces:
+        reference = reference_manager.load_reference(space.id)
+        current_crop = crop_space(image, space)
+        results[space.id] = detector.detect(reference, current_crop)
+    return results
 
 
 def run_detection(image_bytes: bytes) -> list[SpaceDetectionResult] | None:
@@ -71,15 +110,15 @@ def run_detection(image_bytes: bytes) -> list[SpaceDetectionResult] | None:
         logger.warning("no parking spaces registered; skipping detection")
         return []
 
-    logger.info("detection started for %d spaces", len(spaces))
+    logger.info("detection started for %d spaces (backend=%s)", len(spaces), detector_backend)
+
+    raw_by_space = _run_raw_detection(image, spaces)
 
     raw_results: list[SpaceDetectionResult] = []
     confirmed_results: list[SpaceDetectionResult] = []
 
     for space in spaces:
-        reference = reference_manager.load_reference(space.id)
-        current_crop = crop_space(image, space)
-        result = detector.detect(reference, current_crop)
+        result = raw_by_space[space.id]
         state = state_manager.update(space.id, result.status)
 
         logger.info(

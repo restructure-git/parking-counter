@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
+from typing import Literal
 
 from pydantic import BaseModel
 
@@ -28,6 +29,11 @@ DEFAULT_SETTINGS: dict = {
     "required_consecutive_results": 3,
     "image_max_width": 1280,
     "max_upload_size_mb": 10,
+    "detector_backend": "diff",
+    "yolo_model_path": "yolov8n.pt",
+    "yolo_confidence_threshold": 0.4,
+    "yolo_overlap_threshold": 0.3,
+    "yolo_uncertain_margin": 0.1,
 }
 
 
@@ -37,6 +43,14 @@ class Settings(BaseModel):
     required_consecutive_results: int = 3
     image_max_width: int = 1280
     max_upload_size_mb: int = 10
+    # "diff": 既存の画像差分方式（追加依存なし）。
+    # "yolo": ローカル物体検出モデルで車両を検出し、駐車枠との重なりで判定する方式
+    #         （requirements-yolo.txt のインストールが別途必要）。
+    detector_backend: Literal["diff", "yolo"] = "diff"
+    yolo_model_path: str = "yolov8n.pt"
+    yolo_confidence_threshold: float = 0.4
+    yolo_overlap_threshold: float = 0.3
+    yolo_uncertain_margin: float = 0.1
 
     @property
     def max_upload_size_bytes(self) -> int:

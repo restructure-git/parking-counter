@@ -11,3 +11,4 @@ data/tmp/
 *.egg-info/
 logs/
 scratch/
+*.pt
